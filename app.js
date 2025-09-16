@@ -1,5 +1,4 @@
-// app.js — Browser-only poker with full hand-ranking, AI, pot distribution
-// FIXED: AI actions no longer reveal hand type before round end
+// app.js — Browser-only poker with full hand-ranking + enforced betting (call/fold) and Check option
 
 // UI elements
 const usernameInput = document.getElementById("username");
@@ -10,8 +9,11 @@ const lobby = document.getElementById("lobby");
 const game = document.getElementById("game");
 const roomIdDisplay = document.getElementById("roomIdDisplay");
 const potDiv = document.getElementById("potDiv");
+const currentBetDiv = document.getElementById("currentBetDiv");
 const startGameBtn = document.getElementById("startGame");
 const betBtn = document.getElementById("betButton");
+const callBtn = document.getElementById("callButton");
+const checkBtn = document.getElementById("checkButton");
 const foldBtn = document.getElementById("foldButton");
 const endRoundBtn = document.getElementById("endRound");
 
@@ -21,9 +23,10 @@ const messagesDiv = document.getElementById("messages");
 
 let roomId = "";
 let me = ""; // player name for this tab
-let players = {}; // name -> {money,hand,folded,revealed,isAI,active}
+let players = {}; // name -> {money,hand,folded,revealed,isAI,active,contribution}
 let pot = 0;
 let roundActive = false;
+let currentBet = 0; // amount each active player must have contributed to be 'even'
 const ANTE = 10;
 const EXTRA_BET = 10;
 const STARTING_MONEY = 100;
@@ -107,9 +110,10 @@ function renderPlayers(){
     const foldedText = p.folded ? " (Folded)" : "";
     const localMarker = p.isLocal ? " (You)" : p.isAI ? " (AI)" : "";
     const evalText = (p.revealed && p._eval) ? `<div style="font-size:13px;margin-top:6px;color:#cfe8ff">(${p._eval.name})</div>` : "";
+    const contribution = p.contribution || 0;
     const html = `<div style="padding:8px;background:rgba(255,255,255,0.02);border-radius:6px;margin:6px;min-width:160px;text-align:left">
       <div style="font-weight:700">${name}${localMarker}</div>
-      <div>Money: $${p.money}</div>
+      <div>Money: $${p.money} | Contrib: $${contribution}</div>
       <div>${foldedText}${p.revealed ? revealedText : ""}</div>
       ${evalText}
     </div>`;
@@ -118,6 +122,7 @@ function renderPlayers(){
     playersDiv.appendChild(node.firstElementChild);
   }
   potDiv.textContent = pot;
+  currentBetDiv.textContent = currentBet;
 }
 
 // create room (local)
@@ -130,13 +135,14 @@ createRoomBtn.addEventListener("click", () => {
   lobby.style.display = "none";
   game.style.display = "block";
   players = {};
-  players[me] = {money: STARTING_MONEY, hand: [], folded:false, revealed:false, isAI:false, isLocal:true, active:true};
+  players[me] = {money: STARTING_MONEY, hand: [], folded:false, revealed:false, isAI:false, isLocal:true, active:true, contribution:0};
   const aiCount = parseInt(aiCountSelect.value || "0");
   for (let i=1;i<=aiCount;i++){
     const aiName = `AI_${i}`;
-    players[aiName] = {money: STARTING_MONEY, hand:[], folded:false, revealed:false, isAI:true, isLocal:false, active:true};
+    players[aiName] = {money: STARTING_MONEY, hand:[], folded:false, revealed:false, isAI:true, isLocal:false, active:true, contribution:0};
   }
   pot = 0;
+  currentBet = 0;
   roundActive = false;
   messagesDiv.innerHTML = "";
   log(`Room ${roomId} created. Players: ${Object.keys(players).join(", ")}`);
@@ -149,12 +155,14 @@ startGameBtn.addEventListener("click", () => {
   if (!me || !players[me]) { alert("No player found"); return; }
 
   pot = 0;
+  currentBet = 0;
   for (const name in players){
     const p = players[name];
-    if (!p.active || p.money <= 0) { p.active = false; continue; }
+    if (!p.active || p.money <= 0) { p.active = false; p.contribution = 0; continue; }
     const contrib = Math.min(ANTE, p.money);
     p.money -= contrib;
     pot += contrib;
+    p.contribution = contrib;
     p.folded = false;
     p.revealed = false;
     p.hand = [];
@@ -170,7 +178,7 @@ startGameBtn.addEventListener("click", () => {
   roundActive = true;
   log(`Round started (antes ${ANTE} collected). Pot: $${pot}`);
   showLocalHand();
-  // AI behave after initial deal but DO NOT reveal their hand evaluation in logs
+  // AI pre-bet decisions (do not reveal eval names)
   aiActionsAfterDeal();
   renderPlayers();
 });
@@ -182,17 +190,57 @@ function showLocalHand(){
   yourHandDiv.innerHTML = p.hand.map(c => `<span style="display:inline-block;padding:6px 8px;background:rgba(255,255,255,0.06);margin:4px;border-radius:6px">${c}</span>`).join("");
 }
 
-// Human bet (extra fixed bet)
+// Human Bet (raise by EXTRA_BET)
 betBtn.addEventListener("click", () => {
   if (!roundActive) { log("Start a round first."); return; }
   const p = players[me];
   if (!p || p.money <= 0) { log("You have no money to bet."); return; }
-  const betAmt = Math.min(EXTRA_BET, p.money);
-  p.money -= betAmt;
-  pot += betAmt;
-  log(`${me} bets $${betAmt}`);
-  // AI reacts — they will decide using evaluation but not reveal it
-  aiActionsAfterHumanBet();
+
+  // Player raises by EXTRA_BET
+  const raiseAmount = EXTRA_BET;
+  // Increase currentBet by raise - but currentBet is amount to match; we treat raise as setting currentBet = (max existing contribution + raise)
+  // Determine target contribution after raise:
+  const targetContribution = Math.max(...Object.values(players).map(x => x.contribution || 0)) + raiseAmount;
+  const amountToPut = Math.max(0, targetContribution - (p.contribution || 0));
+  const actuallyPaid = Math.min(amountToPut, p.money);
+  p.money -= actuallyPaid;
+  p.contribution = (p.contribution || 0) + actuallyPaid;
+  pot += actuallyPaid;
+  currentBet = Math.max(currentBet, p.contribution);
+  log(`${me} raises to $${currentBet} (paid $${actuallyPaid})`);
+
+  // Now force AIs (and other players if multi-tab humans) to either call (match currentBet) or fold.
+  aiForceCallOrFoldAfterRaise();
+  renderPlayers();
+});
+
+// Human Call
+callBtn.addEventListener("click", () => {
+  if (!roundActive) { log("Start a round first."); return; }
+  const p = players[me];
+  const toCall = (currentBet - (p.contribution || 0));
+  if (toCall <= 0) { log("Nothing to call (you are even)."); return; }
+  const pay = Math.min(toCall, p.money);
+  p.money -= pay;
+  p.contribution = (p.contribution || 0) + pay;
+  pot += pay;
+  log(`${me} calls $${pay}`);
+  // After call, allow AIs to possibly respond (but when call occurs, no forced raise)
+  aiActionsAfterHumanCall();
+  renderPlayers();
+});
+
+// Human Check
+checkBtn.addEventListener("click", () => {
+  if (!roundActive) { log("Start a round first."); return; }
+  const p = players[me];
+  if ((currentBet - (p.contribution || 0)) > 0) {
+    log("Cannot check when there's a bet — you must call or fold.");
+    return;
+  }
+  log(`${me} checks`);
+  // AIs may choose to bet or check
+  aiActionsAfterCheck();
   renderPlayers();
 });
 
@@ -204,10 +252,11 @@ foldBtn.addEventListener("click", () => {
   renderPlayers();
 });
 
-// End round: evaluate winners, split pot, reveal hands
+// End round: reveal and distribute pot
 endRoundBtn.addEventListener("click", () => {
   if (!roundActive) { log("No active round."); return; }
-  // reveal and evaluate
+
+  // Reveal and evaluate
   const activeNames = Object.keys(players).filter(n => !players[n].folded && players[n].hand && players[n].hand.length === 5 && players[n].active !== false);
   if (activeNames.length === 0){
     log("No active players — returning pot equally.");
@@ -248,35 +297,74 @@ endRoundBtn.addEventListener("click", () => {
   }
   pot = 0;
   roundActive = false;
+
+  // reset contributions for next round
+  for (const n in players) players[n].contribution = 0;
+
   renderPlayers();
   log("Round finished. You may start another round.");
 });
 
-// --- AI decision-making ---
-// IMPORTANT: do not reveal hand names in logs while roundActive. Use evaluate only to guide decisions.
-function aiActionsAfterDeal(){
+// --- AI behavior functions (no reveal of hand name until round end) ---
+
+// After a raise by human, AIs must either call (if strong enough & can pay) or fold.
+function aiForceCallOrFoldAfterRaise(){
   for (const name in players){
     const p = players[name];
     if (!p.isAI || p.folded || p.money <= 0 || !roundActive) continue;
-    const evalRes = evaluate5(p.hand); // use for decision
-    const type = evalRes.type;
-    const strength = type * 10 + (evalRes.tiebreaker && evalRes.tiebreaker[0] ? evalRes.tiebreaker[0]/14*10 : 0);
-    if (strength >= 45 && p.money >= EXTRA_BET){
-      p.money -= EXTRA_BET;
-      pot += EXTRA_BET;
-      log(`${name} (AI) bets $${EXTRA_BET}`);
-    } else if (strength <= 8){
-      if (Math.random() < 0.65){
+    // compute amount they need to call
+    const need = currentBet - (p.contribution || 0);
+    // evaluate hand to decide
+    const evalRes = evaluate5(p.hand);
+    const strength = evalRes.type * 10 + (evalRes.tiebreaker && evalRes.tiebreaker[0] ? evalRes.tiebreaker[0]/14*10 : 0);
+    // decision: stronger hands more likely to call
+    if (strength >= 30 && p.money > 0 && need > 0) {
+      const pay = Math.min(need, p.money);
+      p.money -= pay;
+      p.contribution = (p.contribution || 0) + pay;
+      pot += pay;
+      log(`${name} (AI) calls $${pay}`);
+    } else {
+      p.folded = true;
+      log(`${name} (AI) folds`);
+    }
+  }
+  // after AI responses, ensure contributions consistent, maybe some players are still behind; update currentBet to max contribution
+  currentBet = Math.max(...Object.values(players).map(x => x.contribution || 0));
+  renderPlayers();
+}
+
+// After human calls, AIs can optionally react (call/raise/fold); to keep it simple, they may call a small amount or check
+function aiActionsAfterHumanCall(){
+  for (const name in players){
+    const p = players[name];
+    if (!p.isAI || p.folded || p.money <= 0 || !roundActive) continue;
+    // compute amount they would need to call
+    const need = currentBet - (p.contribution || 0);
+    const evalRes = evaluate5(p.hand);
+    const strength = evalRes.type * 10 + (evalRes.tiebreaker && evalRes.tiebreaker[0] ? evalRes.tiebreaker[0]/14*10 : 0);
+    if (need > 0) {
+      if (strength >= 30 && p.money > 0) {
+        const pay = Math.min(need, p.money);
+        p.money -= pay;
+        p.contribution = (p.contribution || 0) + pay;
+        pot += pay;
+        log(`${name} (AI) calls $${pay}`);
+      } else {
         p.folded = true;
         log(`${name} (AI) folds`);
-      } else {
-        log(`${name} (AI) checks`);
       }
     } else {
-      if (Math.random() < 0.25 && p.money >= EXTRA_BET){
-        p.money -= EXTRA_BET;
-        pot += EXTRA_BET;
-        log(`${name} (AI) semi-bets $${EXTRA_BET}`);
+      // no outstanding bet — small chance to bet
+      if (strength >= 45 && p.money >= EXTRA_BET && Math.random() < 0.3) {
+        // raise
+        const target = Math.max(...Object.values(players).map(x => x.contribution || 0)) + EXTRA_BET;
+        const pay = Math.min(target - (p.contribution || 0), p.money);
+        p.money -= pay;
+        p.contribution = (p.contribution || 0) + pay;
+        pot += pay;
+        currentBet = Math.max(currentBet, p.contribution);
+        log(`${name} (AI) raises to $${currentBet}`);
       } else {
         log(`${name} (AI) checks`);
       }
@@ -285,19 +373,22 @@ function aiActionsAfterDeal(){
   renderPlayers();
 }
 
-function aiActionsAfterHumanBet(){
+// After a human check (no outstanding bet), AIs may bet or check
+function aiActionsAfterCheck(){
   for (const name in players){
     const p = players[name];
     if (!p.isAI || p.folded || p.money <= 0 || !roundActive) continue;
     const evalRes = evaluate5(p.hand);
     const strength = evalRes.type * 10 + (evalRes.tiebreaker && evalRes.tiebreaker[0] ? evalRes.tiebreaker[0]/14*10 : 0);
-    if (strength >= 30 && p.money >= EXTRA_BET){
-      p.money -= EXTRA_BET;
-      pot += EXTRA_BET;
-      log(`${name} (AI) calls $${EXTRA_BET}`);
-    } else if (strength < 8 && Math.random() < 0.6){
-      p.folded = true;
-      log(`${name} (AI) folds`);
+    if (strength >= 45 && p.money >= EXTRA_BET && Math.random() < 0.5){
+      // AI bets (raise)
+      const target = Math.max(...Object.values(players).map(x => x.contribution || 0)) + EXTRA_BET;
+      const pay = Math.min(target - (p.contribution || 0), p.money);
+      p.money -= pay;
+      p.contribution = (p.contribution || 0) + pay;
+      pot += pay;
+      currentBet = Math.max(currentBet, p.contribution);
+      log(`${name} (AI) bets $${pay}`);
     } else {
       log(`${name} (AI) checks`);
     }
