@@ -1,53 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Poker Game</title>
-    <style>
-        body { font-family: Arial, sans-serif; background:#0b3d91; color:#fff; text-align:center; }
-        #lobby, #game { margin:20px; }
-        input, button, select { padding:10px; margin:5px; font-size:16px; }
-        #hand span { font-size:20px; margin-right:5px; }
-        #playersDiv div { margin:5px 0; }
-        #messages { border:1px solid #fff; height:150px; overflow-y:scroll; padding:5px; margin-top:10px; background:#123c7a; }
-        #potDiv { margin:10px; font-weight:bold; }
-    </style>
+  <meta charset="utf-8" />
+  <title>Poker — Browser Only (AI & Local)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: Inter, Arial, sans-serif; background: linear-gradient(#062b4b,#04122a); color:#fff; text-align:center; padding:18px; }
+    .panel{background:rgba(255,255,255,0.03);padding:14px;border-radius:10px;max-width:980px;margin:14px auto}
+    input,select,button{padding:8px 12px;margin:6px;border-radius:8px;border:none;background:#0ea5a3;color:#012; font-weight:600}
+    button.secondary{background:#7c3aed;color:#fff}
+    #playersDiv{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px}
+    .playerCard{background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;min-width:160px;text-align:left}
+    #hand{margin-top:12px;font-size:20px}
+    #messages{height:160px;overflow:auto;text-align:left;border-radius:8px;padding:8px;background:rgba(0,0,0,0.12);margin-top:12px}
+    .big{font-size:18px;font-weight:700}
+  </style>
 </head>
 <body>
-    <h1>Poker Game (Single Device / AI)</h1>
-
-    <!-- Lobby -->
-    <div id="lobby">
-        <input id="username" placeholder="Enter your name">
-        <br>
-        <!-- AI Player Selection -->
-        <label>AI Players (1-5):</label>
-        <select id="aiCount">
-            <option value="0">0</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-        </select>
-        <br>
-        <button id="createRoom">Create Room</button>
+  <div class="panel" id="lobby">
+    <h1>Poker — Play vs AI / Local Tabs</h1>
+    <div>
+      <input id="username" placeholder="Your name (e.g. Alice)" />
+      <label style="margin-left:8px">AI players:</label>
+      <select id="aiCount">
+        <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+        <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+      </select>
     </div>
+    <div style="margin-top:8px">
+      <button id="createRoom">Create Room (local)</button>
+    </div>
+    <div class="small" style="margin-top:6px;color:#cfe8ff">This is browser-only: rooms exist in your current page. Open multiple tabs to simulate human players.</div>
+  </div>
 
-    <!-- Game Area -->
-    <div id="game" style="display:none;">
-        <h2>Room: <span id="roomIdDisplay"></span></h2>
-        <div id="hand"></div>
-        <div id="potDiv">Pot: $0</div>
-        <button id="startGame">Start Round</button>
-        <button id="betButton">Bet $10</button>
+  <div class="panel" id="game" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div>
+        <div class="big">Room ID: <span id="roomIdDisplay"></span></div>
+        <div style="margin-top:6px">Pot: <span id="potDiv">0</span></div>
+      </div>
+      <div>
+        <button id="startGame" class="secondary">Start Round (antes)</button>
+        <button id="betButton">Bet +$10</button>
         <button id="foldButton">Fold</button>
-        <button id="endRound">End Round</button>
-        <div id="playersDiv"></div>
-        <div id="messages"></div>
+        <button id="endRound">End Round (Reveal)</button>
+      </div>
     </div>
 
-    <!-- Link to game logic -->
-    <script src="app.js"></script>
+    <div id="hand" class="panel" style="max-width:760px;margin:16px auto;text-align:center;background:rgba(255,255,255,0.02)">
+      <div class="big">Your Hand</div>
+      <div id="yourHand"></div>
+    </div>
+
+    <div id="playersDiv"></div>
+
+    <div id="messages" class="panel"></div>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>
