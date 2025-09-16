@@ -1,4 +1,4 @@
-// Local Multiplayer Poker with hands, money, and pot
+// Local Multiplayer Poker with hidden hands until round ends
 
 const usernameInput = document.getElementById("username");
 const createRoomBtn = document.getElementById("createRoom");
@@ -15,7 +15,6 @@ const startGameBtn = document.getElementById("startGame");
 const betBtn = document.getElementById("betButton");
 const foldBtn = document.getElementById("foldButton");
 
-// Added: Player list and pot
 const playersDiv = document.createElement("div");
 playersDiv.id = "playersDiv";
 gameDiv.insertBefore(playersDiv, messagesDiv);
@@ -30,11 +29,12 @@ let roomId = "";
 let hand = [];
 let deck = [];
 let pot = 0;
+let roundOver = false;
 
-// Track players and money
-let players = {}; // {username: {hand:[], money:100, folded:false}}
+// Players object: { username: {hand:[], money:100, folded:false, revealed:false} }
+let players = {};
 
-// Logging helper
+// Logging
 function log(msg) {
     const p = document.createElement("p");
     p.textContent = msg;
@@ -80,16 +80,15 @@ function updatePlayersDisplay() {
     playersDiv.innerHTML = "";
     for (let p in players) {
         const div = document.createElement("div");
-        div.textContent = `${p} - $${players[p].money} ${players[p].folded ? "(Folded)" : ""}`;
-        if (players[p].hand) {
-            div.textContent += " | Hand: " + players[p].hand.join(" ");
-        }
+        let handText = "";
+        if (players[p].revealed) handText = " | Hand: " + players[p].hand.join(" ");
+        div.textContent = `${p} - $${players[p].money} ${players[p].folded ? "(Folded)" : ""}${handText}`;
         playersDiv.appendChild(div);
     }
     potDiv.textContent = `Pot: $${pot}`;
 }
 
-// Broadcast a message to other tabs (simulated)
+// Broadcast message to other tabs
 function broadcast(msg) {
     localStorage.setItem("pokerMessage", JSON.stringify(msg));
 }
@@ -106,13 +105,14 @@ function handleMessage(data){
     if(!data) return;
     switch(data.type){
         case "join":
-            players[data.username]={hand:[], money:100, folded:false};
+            players[data.username]={hand:[], money:100, folded:false, revealed:false};
             log(`${data.username} joined the room`);
             updatePlayersDisplay();
             break;
         case "deal":
             if(players[data.username]){
                 players[data.username].hand = data.hand;
+                players[data.username].revealed = false;
             }
             if(data.username===username){
                 hand = data.hand;
@@ -131,6 +131,14 @@ function handleMessage(data){
             }
             updatePlayersDisplay();
             break;
+        case "round-end":
+            roundOver = true;
+            for(let p in players){
+                players[p].revealed = true;
+            }
+            log("Round over! All hands revealed.");
+            updatePlayersDisplay();
+            break;
         case "host-start":
             log("Game started!");
             break;
@@ -144,7 +152,7 @@ createRoomBtn.onclick = ()=>{
     lobby.style.display="none";
     gameDiv.style.display="block";
     roomIdDisplay.textContent = roomId;
-    players[username]={hand:[], money:100, folded:false};
+    players[username]={hand:[], money:100, folded:false, revealed:false};
     log(`Room created! Share Room ID: ${roomId}`);
     updatePlayersDisplay();
 };
@@ -156,7 +164,7 @@ joinRoomBtn.onclick = ()=>{
     gameDiv.style.display="block";
     roomIdDisplay.textContent = roomId;
     broadcast({type:"join", username});
-    players[username]={hand:[], money:100, folded:false};
+    players[username]={hand:[], money:100, folded:false, revealed:false};
     updatePlayersDisplay();
     log(`Joined room: ${roomId}`);
 };
@@ -164,10 +172,12 @@ joinRoomBtn.onclick = ()=>{
 startGameBtn.onclick = ()=>{
     deck=createDeck();
     pot=0;
+    roundOver=false;
     log("Dealing hands...");
     for(let p in players){
         const playerHand=dealHand();
         players[p].hand=playerHand;
+        players[p].revealed=false;
         broadcast({type:"deal", username:p, hand:playerHand});
     }
     hand = players[username].hand;
@@ -176,8 +186,9 @@ startGameBtn.onclick = ()=>{
     updatePlayersDisplay();
 };
 
+// Example: fixed bet amount
 betBtn.onclick = ()=>{
-    let amount = 10; // example fixed bet
+    let amount = 10;
     log(`${username} bets $${amount}`);
     broadcast({type:"action", username, action:"bets", amount});
     players[username].money -= amount;
@@ -185,6 +196,7 @@ betBtn.onclick = ()=>{
     updatePlayersDisplay();
 };
 
+// Fold button
 foldBtn.onclick = ()=>{
     log(`${username} folds`);
     broadcast({type:"action", username, action:"folds"});
@@ -192,3 +204,8 @@ foldBtn.onclick = ()=>{
     updatePlayersDisplay();
 };
 
+// End round button (optional)
+// Can trigger manually or after a fixed number of actions
+function endRound(){
+    broadcast({type:"round-end"});
+}
