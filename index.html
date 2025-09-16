@@ -18,7 +18,7 @@
 </head>
 <body>
   <div class="panel" id="lobby">
-    <h1>Poker — Play vs AI / Local Tabs</h1>
+    <h1>Poker — Play vs AI / Local</h1>
     <div>
       <input id="username" placeholder="Your name (e.g. Alice)" />
       <label style="margin-left:8px">AI players:</label>
@@ -30,7 +30,7 @@
     <div style="margin-top:8px">
       <button id="createRoom">Create Room (local)</button>
     </div>
-    <div class="small" style="margin-top:6px;color:#cfe8ff">This is browser-only: rooms exist in your current page. Open multiple tabs to simulate human players.</div>
+    <div style="margin-top:6px;color:#cfe8ff">This is browser-only: rooms exist in your current page. Open multiple tabs to simulate human players.</div>
   </div>
 
   <div class="panel" id="game" style="display:none">
@@ -38,10 +38,13 @@
       <div>
         <div class="big">Room ID: <span id="roomIdDisplay"></span></div>
         <div style="margin-top:6px">Pot: <span id="potDiv">0</span></div>
+        <div style="margin-top:6px">Current Bet: <span id="currentBetDiv">0</span></div>
       </div>
       <div>
-        <button id="startGame" class="secondary">Start Round (antes)</button>
+        <button id="startGame" class="secondary">Start Round (ante)</button>
         <button id="betButton">Bet +$10</button>
+        <button id="callButton">Call</button>
+        <button id="checkButton">Check</button>
         <button id="foldButton">Fold</button>
         <button id="endRound">End Round (Reveal)</button>
       </div>
