@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WebRTC Poker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>WebRTC Poker</h1>
+    <div id="lobby">
+        <input type="text" id="username" placeholder="Enter your name">
+        <button id="createRoom">Create Room</button>
+        <input type="text" id="roomIdInput" placeholder="Enter Room ID">
+        <button id="joinRoom">Join Room</button>
+        <p id="roomInfo"></p>
+    </div>
+
+    <div id="game" style="display:none;">
+        <h2>Room: <span id="roomIdDisplay"></span></h2>
+        <div id="hand"></div>
+        <button id="startGame">Start Game</button>
+        <div id="actions">
+            <button id="betButton">Bet</button>
+            <button id="foldButton">Fold</button>
+        </div>
+        <div id="messages"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

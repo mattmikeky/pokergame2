@@ -1,0 +1,42 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background-color: #1e1e1e;
+    color: #fff;
+}
+
+h1, h2 {
+    color: #ffcc00;
+}
+
+input {
+    padding: 5px;
+    margin: 5px;
+}
+
+button {
+    padding: 5px 10px;
+    margin: 5px;
+    cursor: pointer;
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #ffcc00;
+    border-radius: 4px;
+}
+
+button:hover {
+    background-color: #555;
+}
+
+#hand {
+    margin: 20px;
+    font-size: 24px;
+}
+
+#messages {
+    margin-top: 20px;
+    border-top: 1px solid #ffcc00;
+    padding-top: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+}
