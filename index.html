@@ -2,30 +2,43 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>WebRTC Poker</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Poker Game</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #0b3d91; color: #fff; text-align: center; }
+        #lobby, #game { margin: 20px; }
+        input, button { padding: 10px; margin: 5px; font-size: 16px; }
+        #hand span { font-size: 20px; margin-right: 5px; }
+        #playersDiv div { margin: 5px 0; }
+        #messages { border: 1px solid #fff; height: 150px; overflow-y: scroll; padding: 5px; margin-top: 10px; background: #123c7a; }
+        #potDiv { margin: 10px; font-weight: bold; }
+    </style>
 </head>
 <body>
-    <h1>WebRTC Poker</h1>
+    <h1>Poker Game</h1>
+
+    <!-- Lobby -->
     <div id="lobby">
-        <input type="text" id="username" placeholder="Enter your name">
+        <input id="username" placeholder="Enter your name">
+        <br>
         <button id="createRoom">Create Room</button>
-        <input type="text" id="roomIdInput" placeholder="Enter Room ID">
         <button id="joinRoom">Join Room</button>
-        <p id="roomInfo"></p>
+        <br>
+        <input id="roomIdInput" placeholder="Room ID (for joining)">
     </div>
 
+    <!-- Game Area -->
     <div id="game" style="display:none;">
         <h2>Room: <span id="roomIdDisplay"></span></h2>
         <div id="hand"></div>
+        <div id="potDiv">Pot: $0</div>
         <button id="startGame">Start Game</button>
-        <div id="actions">
-            <button id="betButton">Bet</button>
-            <button id="foldButton">Fold</button>
-        </div>
+        <button id="betButton">Bet</button>
+        <button id="foldButton">Fold</button>
+        <div id="playersDiv"></div>
         <div id="messages"></div>
     </div>
 
+    <!-- Link to JS -->
     <script src="app.js"></script>
 </body>
 </html>
