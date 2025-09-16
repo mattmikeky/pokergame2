@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>P2P Poker Game</title>
+    <title>Poker Game</title>
     <style>
         body { font-family: Arial, sans-serif; background:#0b3d91; color:#fff; text-align:center; }
-        #lobby,#game { margin:20px; }
-        input, button { padding:10px; margin:5px; font-size:16px; }
+        #lobby, #game { margin:20px; }
+        input, button, select { padding:10px; margin:5px; font-size:16px; }
         #hand span { font-size:20px; margin-right:5px; }
         #playersDiv div { margin:5px 0; }
         #messages { border:1px solid #fff; height:150px; overflow-y:scroll; padding:5px; margin-top:10px; background:#123c7a; }
@@ -14,16 +14,23 @@
     </style>
 </head>
 <body>
-    <h1>P2P Poker Game</h1>
+    <h1>Poker Game (Single Device / AI)</h1>
 
     <!-- Lobby -->
     <div id="lobby">
         <input id="username" placeholder="Enter your name">
         <br>
-        <button id="createRoom">Create Room</button>
-        <button id="joinRoom">Join Room</button>
+        <label>AI Players (1-5):</label>
+        <select id="aiCount">
+            <option value="0">0</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+        </select>
         <br>
-        <input id="roomIdInput" placeholder="Room ID (for joining)">
+        <button id="createRoom">Create Room</button>
     </div>
 
     <!-- Game Area -->
@@ -31,8 +38,8 @@
         <h2>Room: <span id="roomIdDisplay"></span></h2>
         <div id="hand"></div>
         <div id="potDiv">Pot: $0</div>
-        <button id="startGame">Start Game</button>
-        <button id="betButton">Bet</button>
+        <button id="startGame">Start Round</button>
+        <button id="betButton">Bet $10</button>
         <button id="foldButton">Fold</button>
         <button id="endRound">End Round</button>
         <div id="playersDiv"></div>
